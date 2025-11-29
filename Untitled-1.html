@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Simple Weather App</title>
+  <style>
+    :root{
+      --bg:#0f1724; --card:#0b1220; --accent:#06b6d4; --muted:#9aa6b2; --glass: rgba(255,255,255,0.04);
+      --card-radius:18px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; background:linear-gradient(180deg,#071026 0%, #071423 60%); color:#e6eef6; display:flex; align-items:center; justify-content:center; padding:28px;
+    }
+    .app{
+      width:100%; max-width:900px; background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border-radius:var(--card-radius); padding:22px; box-shadow: 0 8px 30px rgba(2,6,23,0.7);
+      display:grid; grid-template-columns: 380px 1fr; gap:20px; align-items:start;
+    }
+    header{display:flex; align-items:center; gap:12px}
+    header h1{margin:0; font-size:20px}
+    .left{padding:14px; background:var(--card); border-radius:14px}
+    .controls{display:flex; gap:8px; margin-top:12px}
+    input[type="text"], input[type="password"], select{flex:1; padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.06); background:var(--glass); color:inherit}
+    button{padding:10px 14px; border-radius:10px; border:0; background:linear-gradient(90deg,var(--accent), #3b82f6); color:#042028; font-weight:600; cursor:pointer}
+    .save-key{display:flex; gap:8px; margin-top:8px; align-items:center}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding:18px; border-radius:12px}
+    .big{display:flex; gap:14px; align-items:center}
+    .temp{font-size:48px; font-weight:700}
+    .cond{font-size:16px; color:var(--muted)}
+    .meta{display:flex; gap:12px; margin-top:12px; color:var(--muted); font-size:14px}
+    .meta div{display:flex; gap:8px; align-items:center}
+    .aqi{margin-top:12px}
+    .history{margin-top:12px; color:var(--muted); font-size:13px}
+    .footer{margin-top:16px; font-size:13px; color:var(--muted)}
+    .loading{opacity:0.9; font-size:14px}
+    @media (max-width:880px){
+      .app{grid-template-columns:1fr;}
+      .left{order:2}
+    }
+  </style>
+</head>
+<body>
+  <div class="app" role="application" aria-label="Simple Weather App">
+    <div class="left">
+      <header>
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M3 12h18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.08"/></svg>
+        <div>
+          <h1>Simple Weather</h1>
+          <div style="color:var(--muted); font-size:13px">Powered by WeatherAPI (current.json)</div>
+        </div>
+      </header>
+
+      <div style="margin-top:12px">
+        <label style="font-size:13px; color:var(--muted);">API Key</label>
+        <div class="controls">
+          <input id="apiKey" type="password" placeholder="Paste your WeatherAPI key here" aria-label="API key"/>
+          <button id="saveKey">Save</button>
+        </div>
+        <div class="save-key"><input id="persistKey" type="checkbox"/><label for="persistKey" style="color:var(--muted); font-size:13px">Remember key (localStorage)</label></div>
+
+        <label style="font-size:13px; color:var(--muted); margin-top:10px; display:block">Location (city or lat,lng)</label>
+        <div class="controls">
+          <input id="location" type="text" placeholder="e.g. London or 28.67,77.22" aria-label="location"/>
+          <button id="search">Search</button>
+        </div>
+
+        <div style="margin-top:14px; display:flex; gap:8px">
+          <button id="useMyLoc">Use my geolocation</button>
+          <button id="clear">Clear</button>
+        </div>
+
+        <div class="history" id="history">No searches yet.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div id="resultArea">
+        <div style="display:flex; justify-content:space-between; align-items:center">
+          <div>
+            <div style="font-size:14px; color:var(--muted)" id="place">—</div>
+            <div style="font-size:12px; color:var(--muted)" id="localtime">—</div>
+          </div>
+          <div id="loading" class="loading" style="display:none">Loading…</div>
+        </div>
+
+        <div style="margin-top:18px; display:flex; align-items:center; gap:18px">
+          <div class="big">
+            <img id="condIcon" alt="weather icon" width="84" height="84" style="filter:drop-shadow(0 8px 18px rgba(2,6,23,0.6));"/>
+            <div>
+              <div class="temp" id="temp">—°C</div>
+              <div class="cond" id="condition">—</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="meta" id="meta">
+          <div><strong id="feels">—</strong><span>Feels like</span></div>
+          <div><strong id="hum">—</strong><span>Humidity</span></div>
+          <div><strong id="wind">—</strong><span>Wind kph</span></div>
+          <div><strong id="vis">—</strong><span>Visibility km</span></div>
+        </div>
+
+        <div class="aqi" id="aqiBlock" style="display:none">
+          <div style="font-size:14px; font-weight:700">Air Quality</div>
+          <div style="margin-top:6px; color:var(--muted)" id="aqiVals">—</div>
+        </div>
+
+        <div class="footer">
+          Tip: paste your API key once, click Save, then search a city (e.g., "Mumbai") or click "Use my geolocation".
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Minimal, well-documented client-only app.
+    const apiKeyInput = document.getElementById('apiKey');
+    const saveKeyBtn = document.getElementById('saveKey');
+    const persistKeyCb = document.getElementById('persistKey');
+    const locInput = document.getElementById('location');
+    const searchBtn = document.getElementById('search');
+    const useMyLoc = document.getElementById('useMyLoc');
+    const clearBtn = document.getElementById('clear');
+    const loadingEl = document.getElementById('loading');
+
+    // result elements
+    const placeEl = document.getElementById('place');
+    const localtimeEl = document.getElementById('localtime');
+    const tempEl = document.getElementById('temp');
+    const conditionEl = document.getElementById('condition');
+    const condIcon = document.getElementById('condIcon');
+    const feelsEl = document.getElementById('feels');
+    const humEl = document.getElementById('hum');
+    const windEl = document.getElementById('wind');
+    const visEl = document.getElementById('vis');
+    const aqiBlock = document.getElementById('aqiBlock');
+    const aqiVals = document.getElementById('aqiVals');
+    const historyEl = document.getElementById('history');
+
+    // load key if saved
+    const SAVED_KEY = 'weather_api_key_v1';
+    const HISTORY_KEY = 'weather_search_history_v1';
+    if(localStorage.getItem(SAVED_KEY)){
+      apiKeyInput.value = localStorage.getItem(SAVED_KEY);
+      persistKeyCb.checked = true;
+    }
+
+    // small search history stored in localStorage
+    function addHistory(q){
+      let h = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+      h = h.filter(x=>x!==q);
+      h.unshift(q);
+      if(h.length>6) h.pop();
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(h));
+      renderHistory();
+    }
+    function renderHistory(){
+      const h = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+      if(h.length===0){ historyEl.textContent = 'No searches yet.'; return }
+      historyEl.innerHTML = h.map(x=>`<button data-q="${x}" style="background:none;border:0;color:var(--accent);cursor:pointer;padding:4px">${x}</button>`).join(' · ');
+      historyEl.querySelectorAll('button').forEach(b=> b.addEventListener('click', ()=>{ locInput.value = b.dataset.q; fetchWeather(b.dataset.q); }));
+    }
+    renderHistory();
+
+    saveKeyBtn.addEventListener('click', ()=>{
+      const k = apiKeyInput.value.trim();
+      if(!k){ alert('Please paste your WeatherAPI key.'); return }
+      if(persistKeyCb.checked){ localStorage.setItem(SAVED_KEY,k); alert('Key saved locally.'); } else { localStorage.removeItem(SAVED_KEY); alert('Key not saved. You can still use it for this session.'); }
+    });
+
+    clearBtn.addEventListener('click', ()=>{
+      apiKeyInput.value=''; locInput.value=''; localStorage.removeItem(SAVED_KEY); localStorage.removeItem(HISTORY_KEY); renderHistory(); resetDisplay();
+    });
+
+    searchBtn.addEventListener('click', ()=>{
+      const q = locInput.value.trim(); if(!q) { alert('Enter a city name or coordinates.'); return }
+      fetchWeather(q);
+    });
+
+    useMyLoc.addEventListener('click', ()=>{
+      if(!navigator.geolocation){ alert('Geolocation not supported'); return }
+      loading(true,'Getting location…');
+      navigator.geolocation.getCurrentPosition(pos=>{
+        const lat = pos.coords.latitude.toFixed(4), lon = pos.coords.longitude.toFixed(4);
+        locInput.value = lat + ',' + lon;
+        fetchWeather(`${lat},${lon}`);
+      }, err=>{ loading(false); alert('Could not get location.'); });
+    });
+
+    function loading(on, msg){ if(on){ loadingEl.style.display='inline-block'; loadingEl.textContent = msg || 'Loading…'; } else { loadingEl.style.display='none'; } }
+
+    function resetDisplay(){ placeEl.textContent='—'; localtimeEl.textContent='—'; tempEl.textContent='—°C'; conditionEl.textContent='—'; condIcon.src=''; feelsEl.textContent='—'; humEl.textContent='—'; windEl.textContent='—'; visEl.textContent='—'; aqiBlock.style.display='none'; }
+
+    async function fetchWeather(query){
+      const key = apiKeyInput.value.trim() || localStorage.getItem(SAVED_KEY) || '';
+      if(!key){ alert('No API key found. Paste your WeatherAPI key in the API Key field and Save (or check "Remember key").'); return }
+      loading(true);
+      try{
+        // build URL. NOTE: user supplied example: http://api.weatherapi.com/v1/current.json?key=&q=London&aqi=yes
+        const url = `https://api.weatherapi.com/v1/current.json?key=${encodeURIComponent(key)}&q=${encodeURIComponent(query)}&aqi=yes`;
+        const resp = await fetch(url);
+        if(!resp.ok){
+          const txt = await resp.text();
+          throw new Error(`Server returned ${resp.status}: ${txt}`);
+        }
+        const data = await resp.json();
+        renderData(data);
+        addHistory(query);
+      }catch(err){
+        console.error(err);
+        alert('Error fetching data: '+ err.message);
+      }finally{ loading(false); }
+    }
+
+    function renderData(d){
+      try{
+        const loc = d.location; const cur = d.current;
+        placeEl.textContent = `${loc.name}${loc.region?(', '+loc.region):''} — ${loc.country}`;
+        localtimeEl.textContent = `Local time: ${loc.localtime}`;
+        tempEl.textContent = `${cur.temp_c}°C`;
+        conditionEl.textContent = cur.condition.text;
+        condIcon.src = cur.condition.icon.startsWith('//') ? ('https:'+cur.condition.icon) : cur.condition.icon;
+        condIcon.alt = cur.condition.text;
+        feelsEl.textContent = cur.feelslike_c + '°C';
+        humEl.textContent = cur.humidity + '%';
+        windEl.textContent = cur.wind_kph + ' kph';
+        visEl.textContent = cur.vis_km + ' km';
+        // AQI
+        if(d.current.air_quality){
+          aqiBlock.style.display = 'block';
+          const aq = d.current.air_quality;
+          const lines = [];
+          // choose a small set of components if present
+          ['us-epa-index','pm2_5','pm10','o3','no2','so2','co'].forEach(k=>{ if(aq[k]!==undefined) lines.push(`${k}: ${format(aq[k])}`); });
+          aqiVals.textContent = lines.join(' · ');
+        } else { aqiBlock.style.display = 'none'; }
+      }catch(e){ console.error('render error',e); }
+    }
+    function format(v){ return (Math.round((v+Number.EPSILON)*100)/100); }
+
+    // allow Enter to trigger search
+    locInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') searchBtn.click(); });
+    apiKeyInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') saveKeyBtn.click(); });
+
+    // provide a small demo preset so user can try (no key required but won't work without key)
+    locInput.value = 'London';
+  </script>
+</body>
+</html>
